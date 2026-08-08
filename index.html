@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aditya — Video Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#121316;
+    --panel:#1b1e23;
+    --panel-alt:#202329;
+    --teal:#4fd8c4;
+    --amber:#e8a33d;
+    --text:#ecece4;
+    --muted:#8b8f97;
+    --line:#2a2d33;
+    --radius:3px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--teal);color:#0c0d0f;}
+
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--teal);
+  }
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;font-weight:600;letter-spacing:-.01em;}
+
+  /* ---------- Timeline nav ---------- */
+  #timeline-nav{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    background:rgba(18,19,22,.92);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .tl-top{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 28px;max-width:1180px;margin:0 auto;
+  }
+  .tl-brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;letter-spacing:.02em;}
+  .tl-brand span{color:var(--teal);}
+  #rec{
+    display:flex;align-items:center;gap:8px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);
+  }
+  .rec-dot{
+    width:7px;height:7px;border-radius:50%;background:#e8543d;
+    animation:blink 1.4s infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .tl-track{
+    position:relative;height:34px;max-width:1180px;margin:0 auto;
+    border-top:1px solid var(--line);
+  }
+  .tl-ticks{
+    display:flex;height:100%;
+  }
+  .tl-tick{
+    flex:1;position:relative;border-right:1px solid var(--line);
+    display:flex;align-items:center;padding-left:10px;cursor:pointer;
+  }
+  .tl-tick:last-child{border-right:none;}
+  .tl-tick span{
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);
+    transition:color .25s;
+    white-space:nowrap;
+  }
+  .tl-tick.active span{color:var(--amber);}
+  .tl-tick.active{background:rgba(232,163,61,.06);}
+  #playhead{
+    position:absolute;top:0;bottom:0;width:2px;background:var(--amber);
+    box-shadow:0 0 8px var(--amber);
+    transition:left .35s cubic-bezier(.4,0,.2,1);
+    pointer-events:none;
+  }
+  #playhead::before{
+    content:'';position:absolute;top:-4px;left:-4px;
+    width:10px;height:8px;background:var(--amber);
+    clip-path:polygon(0 0,100% 0,50% 100%);
+  }
+
+  main{padding-top:76px;}
+  section{
+    max-width:1180px;margin:0 auto;
+    padding:110px 28px 60px;
+    border-bottom:1px solid var(--line);
+  }
+  .kicker{display:flex;align-items:center;gap:12px;margin-bottom:26px;}
+  .kicker .num{color:var(--amber);}
+  .kicker::after{content:'';flex:1;height:1px;background:var(--line);}
+
+  /* ---------- Hero ---------- */
+  #intro{
+    min-height:88vh;display:flex;flex-direction:column;justify-content:center;
+    padding-top:76px;position:relative;
+  }
+  .wave{
+    position:absolute;left:28px;right:28px;bottom:70px;height:60px;
+    display:flex;align-items:flex-end;gap:3px;opacity:.5;
+    pointer-events:none;
+  }
+  .wave i{
+    flex:1;background:var(--teal);opacity:.35;border-radius:1px;
+    animation:wv 2.6s ease-in-out infinite;
+  }
+  @keyframes wv{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+  h1.name{
+    font-size:clamp(52px,10vw,120px);
+    line-height:.92;
+    text-transform:uppercase;
+  }
+  h1.name .o{color:transparent;-webkit-text-stroke:1.5px var(--text);}
+  .role{
+    font-family:'JetBrains Mono',monospace;
+    font-size:15px;color:var(--muted);margin-top:18px;letter-spacing:.02em;
+  }
+  .role b{color:var(--amber);font-weight:500;}
+  .bio{
+    max-width:560px;margin-top:26px;color:var(--muted);
+    font-size:16px;line-height:1.65;
+  }
+  .bio strong{color:var(--text);font-weight:500;}
+  .scrolldown{
+    margin-top:56px;display:flex;align-items:center;gap:10px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+    letter-spacing:.1em;text-transform:uppercase;
+  }
+  .scrolldown .bar{width:1px;height:34px;background:linear-gradient(var(--teal),transparent);
+    animation:down 1.6s infinite;}
+  @keyframes down{0%{opacity:0}30%{opacity:1}100%{opacity:0;transform:translateY(10px)}}
+
+  /* ---------- Work / clip cards ---------- */
+  .clipgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);}
+  .clip{background:var(--panel);padding:0 0 30px;display:flex;flex-direction:column;gap:14px;
+    transition:background .25s;overflow:hidden;}
+  .clip:hover{background:var(--panel-alt);}
+  .clip-thumb{
+    width:100%;aspect-ratio:16/9;overflow:hidden;background:var(--panel-alt);
+    border-bottom:1px solid var(--line);position:relative;
+  }
+  .clip-thumb img{width:100%;height:100%;object-fit:cover;display:block;
+    filter:saturate(.85) contrast(1.05);transition:filter .25s,transform .4s;}
+  .clip:hover .clip-thumb img{filter:saturate(1) contrast(1.05);transform:scale(1.03);}
+  .clip-thumb::after{
+    content:'▶';position:absolute;bottom:10px;right:12px;
+    width:26px;height:26px;border-radius:50%;background:rgba(18,19,22,.75);
+    color:var(--teal);font-size:10px;display:flex;align-items:center;justify-content:center;
+    padding-left:2px;
+  }
+  .clip-body{padding:24px 30px 0;display:flex;flex-direction:column;gap:14px;flex:1;}
+  .clip.no-thumb .clip-body{padding-top:30px;}
+  .clip-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .clip-head h3{font-size:21px;}
+  .duration{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:#0c0d0f;
+    background:var(--teal);padding:3px 8px;border-radius:2px;white-space:nowrap;
+  }
+  .clip p{color:var(--muted);font-size:14.5px;line-height:1.6;}
+  .clip-links{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto;padding-top:6px;}
+  .clip-links a{
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--teal);
+    text-decoration:none;border:1px solid var(--line);padding:6px 10px;border-radius:2px;
+    transition:border-color .2s,color .2s;
+  }
+  .clip-links a:hover{border-color:var(--teal);color:#fff;}
+  .featured{
+    grid-column:1/-1;background:var(--panel-alt);
+  }
+  @media(max-width:760px){.clipgrid{grid-template-columns:1fr;}}
+
+  /* ---------- Gallery ---------- */
+  .gallery-grid{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+    background:var(--line);border:1px solid var(--line);
+  }
+  .g-item{
+    aspect-ratio:1/1;overflow:hidden;background:var(--panel);position:relative;cursor:pointer;
+  }
+  .g-item img{
+    width:100%;height:100%;object-fit:cover;display:block;
+    filter:saturate(.85);transition:filter .25s,transform .4s;
+  }
+  .g-item:hover img{filter:saturate(1);transform:scale(1.06);}
+  .g-item .g-cap{
+    position:absolute;left:0;right:0;bottom:0;padding:10px 12px;
+    background:linear-gradient(transparent,rgba(12,13,15,.88));
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);
+    opacity:0;transition:opacity .25s;
+  }
+  .g-item:hover .g-cap{opacity:1;}
+  @media(max-width:760px){.gallery-grid{grid-template-columns:repeat(2,1fr);}}
+
+  #lightbox{
+    position:fixed;inset:0;z-index:200;background:rgba(9,10,12,.94);
+    display:none;align-items:center;justify-content:center;padding:40px;
+    cursor:zoom-out;
+  }
+  #lightbox.open{display:flex;}
+  #lightbox img{max-width:90vw;max-height:80vh;object-fit:contain;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  #lightbox .lb-cap{
+    position:absolute;bottom:34px;left:0;right:0;text-align:center;
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);
+  }
+  #lightbox .lb-close{
+    position:absolute;top:24px;right:28px;font-family:'JetBrains Mono',monospace;
+    font-size:12px;color:var(--muted);letter-spacing:.1em;
+  }
+
+  /* ---------- Toolkit ---------- */
+  .mixer{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border:1px solid var(--line);}
+  .fader{
+    flex:1 1 150px;background:var(--panel);padding:22px 18px;
+  }
+  .fader .lvl{
+    height:3px;background:var(--line);border-radius:2px;margin-bottom:14px;overflow:hidden;
+  }
+  .fader .lvl i{display:block;height:100%;background:var(--amber);border-radius:2px;}
+  .fader h4{font-family:'Space Grotesk',sans-serif;font-size:15px;margin-bottom:6px;}
+  .fader p{font-size:12.5px;color:var(--muted);line-height:1.55;}
+
+  /* ---------- Process ---------- */
+  .filmstrip{display:flex;overflow-x:auto;gap:1px;background:var(--line);border:1px solid var(--line);
+    scrollbar-width:thin;}
+  .frame{
+    min-width:190px;background:var(--panel);padding:22px 18px;position:relative;flex-shrink:0;
+  }
+  .frame .fn{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--amber);margin-bottom:10px;display:block;}
+  .frame p{font-size:13px;color:var(--muted);line-height:1.55;}
+  .frame::after{content:'';position:absolute;top:0;bottom:0;right:0;width:6px;
+    background:repeating-linear-gradient(180deg,var(--bg) 0 6px,transparent 6px 12px);}
+
+  /* ---------- Education / about ---------- */
+  .aboutgrid{display:grid;grid-template-columns:1.1fr .9fr;gap:50px;}
+  .aboutgrid p{color:var(--muted);line-height:1.75;font-size:15px;margin-bottom:14px;}
+  .aboutgrid p strong{color:var(--text);}
+  .credit{border-left:2px solid var(--teal);padding-left:18px;margin-bottom:22px;}
+  .credit .yr{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+  .credit h4{font-size:16px;margin-top:4px;}
+  @media(max-width:760px){.aboutgrid{grid-template-columns:1fr;}}
+
+  /* ---------- Contact ---------- */
+  #contact{border-bottom:none;padding-bottom:90px;}
+  .contact-row{display:flex;flex-wrap:wrap;gap:14px;margin-top:34px;}
+  .contact-row a{
+    font-family:'JetBrains Mono',monospace;font-size:13px;
+    color:var(--text);border:1px solid var(--line);padding:14px 20px;border-radius:2px;
+    text-decoration:none;display:flex;align-items:center;gap:10px;
+    transition:border-color .2s,color .2s;
+  }
+  .contact-row a:hover{border-color:var(--teal);color:var(--teal);}
+  .contact-row a .dot{width:6px;height:6px;background:var(--amber);border-radius:50%;}
+  footer{
+    text-align:center;padding:30px;font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--muted);letter-spacing:.05em;
+  }
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease;}
+  .reveal.in{opacity:1;transform:none;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="timeline-nav">
+  <div class="tl-top">
+    <div class="tl-brand">ADITYA<span>.EDIT</span></div>
+    <div id="rec"><span class="rec-dot"></span><span id="tc">00:00:00:00</span></div>
+  </div>
+  <div class="tl-track">
+    <div class="tl-ticks">
+      <div class="tl-tick active" data-target="intro"><span>00:00 — INTRO</span></div>
+      <div class="tl-tick" data-target="work"><span>00:12 — WORK</span></div>
+      <div class="tl-tick" data-target="gallery"><span>00:29 — GALLERY</span></div>
+      <div class="tl-tick" data-target="toolkit"><span>00:46 — TOOLKIT</span></div>
+      <div class="tl-tick" data-target="process"><span>01:03 — PROCESS</span></div>
+      <div class="tl-tick" data-target="about"><span>01:20 — ABOUT</span></div>
+      <div class="tl-tick" data-target="contact"><span>01:34 — CONTACT</span></div>
+    </div>
+    <div id="playhead" style="left:0%"></div>
+  </div>
+</div>
+
+<main>
+
+  <section id="intro">
+    <h1 class="name">ADITYA<span class="o">.</span></h1>
+    <div class="role">VIDEO EDITOR — <b>SHORT-FORM</b> · <b>LONG-FORM</b> · <b>CONTENT DESIGN</b></div>
+    <p class="bio">First-year B.Tech engineering student in Kerala who cuts, grades and scripts for a living
+      outside the classroom — running a <strong>Roblox-animated psychological-fact Shorts channel</strong>
+      and a <strong>long-form gaming commentary channel</strong>, plus editing work for outside clients.
+      DaVinci Resolve is home base; storytelling comes first, effects second.</p>
+    <div class="scrolldown"><div class="bar"></div>SCROLL</div>
+    <div class="wave" id="wavebars"></div>
+  </section>
+
+  <section id="work">
+    <div class="kicker"><span class="mono eyebrow"><span class="num">01</span> — WORK</span></div>
+    <h2 style="font-size:34px;margin-bottom:34px;">Channels &amp; cuts</h2>
+    <div class="clipgrid" id="clipgrid"></div>
+  </section>
+
+  <section id="gallery">
+    <div class="kicker"><span class="mono eyebrow"><span class="num">02</span> — GALLERY</span></div>
+    <h2 style="font-size:34px;margin-bottom:34px;">Art &amp; posters</h2>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </section>
+
+  <section id="toolkit">
+    <div class="kicker"><span class="mono eyebrow"><span class="num">03</span> — TOOLKIT</span></div>
+    <h2 style="font-size:34px;margin-bottom:34px;">Signal chain</h2>
+    <div class="mixer">
+      <div class="fader"><div class="lvl"><i style="width:92%"></i></div><h4>DaVinci Resolve</h4>
+        <p>Primary editor — color grading, Ripple Delete workflows, proxy media routing.</p></div>
+      <div class="fader"><div class="lvl"><i style="width:80%"></i></div><h4>Fairlight</h4>
+        <p>Audio mixing, ducking, compression/limiting to -14 LUFS integrated for YouTube.</p></div>
+      <div class="fader"><div class="lvl"><i style="width:70%"></i></div><h4>OBS</h4>
+        <p>Gameplay and screen recording for long-form commentary capture.</p></div>
+      <div class="fader"><div class="lvl"><i style="width:55%"></i></div><h4>CapCut</h4>
+        <p>Secondary/mobile editor for quick turnarounds.</p></div>
+      <div class="fader"><div class="lvl"><i style="width:65%"></i></div><h4>ElevenLabs</h4>
+        <p>AI voice generation with emotion/delivery tagging for Shorts narration.</p></div>
+      <div class="fader"><div class="lvl"><i style="width:50%"></i></div><h4>Midjourney</h4>
+        <p>Thumbnail concepting and mockup iteration.</p></div>
+    </div>
+  </section>
+
+  <section id="process">
+    <div class="kicker"><span class="mono eyebrow"><span class="num">04</span> — PROCESS</span></div>
+    <h2 style="font-size:34px;margin-bottom:34px;">Script formula — Baseplate Shorts</h2>
+    <div class="filmstrip">
+      <div class="frame"><span class="fn">01</span><p>Shocking hook about a real person or phenomenon</p></div>
+      <div class="frame"><span class="fn">02</span><p>Name the phenomenon</p></div>
+      <div class="frame"><span class="fn">03</span><p>Real study or historical example</p></div>
+      <div class="frame"><span class="fn">04</span><p>"But here's the scary part" — escalation</p></div>
+      <div class="frame"><span class="fn">05</span><p>Broader real-world implications</p></div>
+      <div class="frame"><span class="fn">06</span><p>Mind-blowing conclusion</p></div>
+      <div class="frame"><span class="fn">07</span><p>Personal comment-bait question</p></div>
+    </div>
+  </section>
+
+  <section id="about">
+    <div class="kicker"><span class="mono eyebrow"><span class="num">05</span> — ABOUT</span></div>
+    <div class="aboutgrid">
+      <div>
+        <p><strong>Aditya</strong> is a first-year B.Tech engineering student based in Kerala, India,
+          who treats editing as a craft learned by shipping — running two active YouTube channels
+          in parallel formats, taking on outside edit work, and picking apart algorithmic and
+          retention data as carefully as the timeline itself.</p>
+        <p>Also codes and builds in Roblox Studio, and draws — a habit that shows up in the
+          character work behind Baseplate's animation and channel thumbnails.</p>
+      </div>
+      <div>
+        <div class="credit"><div class="yr mono">CURRENT</div><h4>B.Tech, Engineering</h4>
+          <p style="color:var(--muted);font-size:13.5px;">Kerala Technological University</p></div>
+        <div class="credit"><div class="yr mono">NDA WORK</div><h4>Phorena-Inc</h4>
+          <p style="color:var(--muted);font-size:13.5px;">Details under non-disclosure agreement</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contact">
+    <div class="kicker"><span class="mono eyebrow"><span class="num">06</span> — CONTACT</span></div>
+    <h2 style="font-size:34px;">Cut something together?</h2>
+    <div class="contact-row">
+      <a href="https://github.com/AdityaAjay07" target="_blank" rel="noopener"><span class="dot"></span>GitHub — AdityaAjay07</a>
+      <a href="https://youtube.com/@typxiial?si=cC87a8oTkmTbp-h0" target="_blank" rel="noopener"><span class="dot"></span>Baseplate</a>
+      <a href="https://www.youtube.com/@typical3849" target="_blank" rel="noopener"><span class="dot"></span>Gaming Commentary</a>
+    </div>
+  </section>
+
+</main>
+
+<div id="lightbox">
+  <span class="lb-close">✕ CLOSE</span>
+  <img id="lb-img" src="" alt="">
+  <div class="lb-cap" id="lb-cap"></div>
+</div>
+
+<footer>ADITYA.EDIT — CUT ON THE ACTION</footer>
+
+<script>
+  /* =====================================================================
+     ADD A NEW VIDEO HERE — copy one block below, edit it, done.
+     No other part of the file needs to change.
+
+     Fields:
+       title     — name of the video/channel
+       duration  — small tag on the top right, e.g. "35s", "long-form", "client"
+       desc      — one or two sentences
+       links     — array of {label, url}. First one is the primary button.
+       featured  — true makes it a full-width highlighted card (use sparingly)
+       thumb     — OPTIONAL. Direct image URL for the card's thumbnail.
+                   If you leave this out, the site tries to auto-generate one:
+                     • YouTube video/short links → auto thumbnail, no work needed
+                     • Google Drive file links   → auto thumbnail IF the file's
+                       sharing is set to "Anyone with the link" (Drive thumbnails
+                       fail silently otherwise, and the card just shows no image)
+                     • Channel-only links (no specific video) → no auto thumbnail
+                   To use your own image instead, host it anywhere public
+                   (e.g. imgur.com, or upload it into this same GitHub repo and
+                   use its raw file URL) and set: thumb: "https://..."
+     ===================================================================== */
+  const CLIPS = [
+    {
+      title: "Baseplate",
+      duration: "35–50s",
+      desc: "Roblox-animated psychological & paranormal fact Shorts — Roblox used purely as the animation engine, no face cam, no gaming content. ElevenLabs voice, dense fact-dense scripts, cut and mixed in DaVinci Resolve at -14 LUFS for YouTube.",
+      links: [
+        { label: "▶ Watch a Short", url: "https://youtube.com/shorts/MgG2glxGDyM?si=6psUlyprW6O5JsZe" },
+        { label: "Channel — @typxiial", url: "https://youtube.com/@typxiial?si=cC87a8oTkmTbp-h0" }
+      ],
+      featured: true
+    },
+    {
+      title: "Gaming Commentary",
+      duration: "long-form",
+      desc: "Condensed, understated commentary in the vein of Modest Pelican — lowercase titles, no clickbait. Includes a full Forza Horizon 6 (Japan) piece and an in-progress Resident Evil Requiem video with color-graded MotionCam MCRAW/DNG footage.",
+      links: [{ label: "Channel — @typical3849", url: "https://www.youtube.com/@typical3849" }]
+    },
+    {
+      title: "VeloCET Edit",
+      duration: "client",
+      desc: "Standalone edit produced for VeloCET — cut, paced and delivered as a finished piece outside the personal channels.",
+      links: [{ label: "View edit", url: "https://drive.google.com/file/d/1DcaUiW08nb0FZ19bIomL9gtJGGsCwym/view?usp=drive_link" }]
+    },
+    {
+      title: "Mannequin Challenge — CSE",
+      duration: "event",
+      desc: "Group mannequin-challenge piece shot and edited for the CSE department.",
+      links: [{ label: "View video", url: "https://drive.google.com/file/d/16R74w56jHZ0qrh4D5jelqFDMQVGwY9Ov/view?usp=sharing" }]
+    },
+    {
+      title: "Skits",
+      duration: "×2",
+      desc: "Short comedic skits — written, shot and edited start to finish.",
+      links: [
+        { label: "Skit 1", url: "https://drive.google.com/file/d/1xP9PJHUNb-v2Xg5e5PViqbi6ZiERn7Z/view?usp=sharing" },
+        { label: "Skit 2", url: "https://drive.google.com/file/d/1cMkAR43bhAFzmaYGPHqhLQWUp9EHPsCc/view?usp=sharing" }
+      ]
+    },
+    {
+      title: "ItsTypxial",
+      duration: "channel",
+      desc: "Additional channel used for wider-ranging edits and experiments outside the two main formats.",
+      links: [{ label: "Channel — @ItsTypxial", url: "https://www.youtube.com/@ItsTypxial" }]
+    }
+    // ↑ add new entries above this line, e.g.:
+    // {
+    //   title: "New Edit Title",
+    //   duration: "1:20",
+    //   desc: "What it is and what you did on it.",
+    //   links: [{ label: "Watch", url: "https://youtube.com/..." }]
+    // },
+  ];
+
+  function escapeHTML(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // Tries to find a usable thumbnail from a clip's links when no explicit
+  // `thumb` field is set. Returns null if nothing usable was found.
+  function autoThumb(links){
+    for(const l of links){
+      const yt = l.url.match(/(?:youtu\.be\/|shorts\/|watch\?v=)([a-zA-Z0-9_-]{11})/);
+      if(yt) return `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg`;
+      const dr = l.url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if(dr) return `https://drive.google.com/thumbnail?id=${dr[1]}&sz=w640`;
+    }
+    return null;
+  }
+
+  function renderClips(){
+    const grid = document.getElementById('clipgrid');
+    grid.innerHTML = CLIPS.map(c => {
+      const thumb = c.thumb || autoThumb(c.links);
+      return `
+      <div class="clip${c.featured ? ' featured' : ''}${thumb ? '' : ' no-thumb'}">
+        ${thumb ? `
+        <div class="clip-thumb">
+          <img src="${thumb}" alt="${escapeHTML(c.title)} thumbnail" loading="lazy"
+               onerror="this.closest('.clip-thumb').remove(); this.closest('.clip').classList.add('no-thumb');">
+        </div>` : ''}
+        <div class="clip-body">
+          <div class="clip-head">
+            <h3>${escapeHTML(c.title)}</h3>
+            ${c.duration ? `<span class="duration">${escapeHTML(c.duration)}</span>` : ''}
+          </div>
+          <p>${c.desc}</p>
+          <div class="clip-links">
+            ${c.links.map(l => `<a href="${l.url}" target="_blank" rel="noopener">${escapeHTML(l.label)}</a>`).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+    }).join('');
+  }
+  renderClips();
+
+  /* =====================================================================
+     ADD A NEW IMAGE/POSTER HERE — one object per image.
+
+     Fields:
+       src      — path or URL to the image
+       caption  — short label, e.g. the piece's name or medium
+
+     HOW TO GET AN IMAGE URL:
+     Easiest (keeps everything in one place): in your GitHub repo, create a
+     folder called "images", upload your photo/poster into it (drag & drop,
+     same as you did with index.html), then set src to "images/filename.jpg"
+     — GitHub Pages serves it automatically once you push, no extra setup.
+
+     Alternative: host it anywhere public (e.g. imgur.com) and paste the
+     direct image link as src instead.
+     ===================================================================== */
+  const GALLERY = [
+    // { src: "images/eye-sketch.jpg", caption: "Graphite study" },
+    // { src: "images/luffy.jpg", caption: "One Piece — pencil" },
+    // { src: "images/hummingbird.jpg", caption: "Colour pencil" },
+  ];
+
+  function renderGallery(){
+    const grid = document.getElementById('gallery-grid');
+    if(!GALLERY.length){
+      grid.innerHTML = `<p style="grid-column:1/-1;color:var(--muted);font-size:14px;padding:20px 0;">
+        No images added yet — drop files into an <span class="mono">images/</span> folder in the repo
+        and list them in the <span class="mono">GALLERY</span> array to fill this section.</p>`;
+      return;
+    }
+    grid.innerHTML = GALLERY.map((g,i) => `
+      <div class="g-item" data-i="${i}">
+        <img src="${g.src}" alt="${escapeHTML(g.caption || '')}" loading="lazy">
+        ${g.caption ? `<div class="g-cap">${escapeHTML(g.caption)}</div>` : ''}
+      </div>
+    `).join('');
+    document.querySelectorAll('.g-item').forEach(el=>{
+      el.classList.add('reveal');
+      el.addEventListener('click', ()=>openLightbox(GALLERY[+el.dataset.i]));
+    });
+  }
+  renderGallery();
+
+  const lightbox = document.getElementById('lightbox');
+  function openLightbox(g){
+    document.getElementById('lb-img').src = g.src;
+    document.getElementById('lb-cap').textContent = g.caption || '';
+    lightbox.classList.add('open');
+  }
+  lightbox.addEventListener('click', ()=> lightbox.classList.remove('open'));
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape') lightbox.classList.remove('open'); });
+
+  // timecode ticker
+  let frame=0;
+  const tc=document.getElementById('tc');
+  setInterval(()=>{
+    frame++;
+    if(frame>=30){frame=0;}
+    const s=Math.floor(Date.now()/1000)%86400;
+    const hh=String(Math.floor(s/3600)%24).padStart(2,'0');
+    const mm=String(Math.floor(s/60)%60).padStart(2,'0');
+    const ss=String(s%60).padStart(2,'0');
+    const ff=String(frame).padStart(2,'0');
+    tc.textContent=`${hh}:${mm}:${ss}:${ff}`;
+  },33);
+
+  // waveform bars
+  const wave=document.getElementById('wavebars');
+  for(let i=0;i<80;i++){
+    const bar=document.createElement('i');
+    bar.style.animationDelay=(Math.random()*2.6)+'s';
+    wave.appendChild(bar);
+  }
+
+  // scrollspy + playhead
+  const ticks=[...document.querySelectorAll('.tl-tick')];
+  const sections=ticks.map(t=>document.getElementById(t.dataset.target));
+  const playhead=document.getElementById('playhead');
+
+  function updateNav(){
+    let idx=0;
+    const y=window.scrollY+120;
+    sections.forEach((sec,i)=>{ if(sec && sec.offsetTop<=y) idx=i; });
+    ticks.forEach(t=>t.classList.remove('active'));
+    ticks[idx].classList.add('active');
+    const pct=((idx+0.5)/ticks.length)*100;
+    playhead.style.left=pct+'%';
+  }
+  window.addEventListener('scroll',updateNav,{passive:true});
+  updateNav();
+
+  ticks.forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.getElementById(t.dataset.target).scrollIntoView({behavior:'smooth'});
+    });
+  });
+
+  // reveal on scroll (clip cards are already in the DOM by this point, since renderClips() ran above)
+  document.querySelectorAll('.clip, .g-item, .fader, .frame, .credit').forEach(el=>el.classList.add('reveal'));
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); });
+  },{threshold:.15});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+
+</body>
+</html>
